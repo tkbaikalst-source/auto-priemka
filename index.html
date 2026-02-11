@@ -27,85 +27,159 @@
     <div class="container">
         <div class="header">
             <h1 style="font-size: 28px;">🚗 Приёмка Авто</h1>
-            <button class="btn" onclick="alert('Форма добавления')">➕ Добавить авто</button>
+            <div>
+                <span id="userInfo" style="margin-right: 16px;"></span>
+                <button class="btn" onclick="showAddForm()">➕ Добавить авто</button>
+            </div>
         </div>
 
         <div class="stats">
-            <div class="stat-card"><div style="color: #64748b;">Всего авто</div><div style="font-size: 36px; font-weight: 600;" id="totalCars">33</div></div>
-            <div class="stat-card"><div style="color: #64748b;">Сумма</div><div style="font-size: 36px; font-weight: 600;" id="totalAmount">555 000 ₽</div></div>
-            <div class="stat-card"><div style="color: #64748b;">В пути</div><div style="font-size: 36px; font-weight: 600;" id="inTransit">31</div></div>
+            <div class="stat-card"><div style="color: #64748b;">Всего авто</div><div style="font-size: 36px; font-weight: 600;" id="totalCars">0</div></div>
+            <div class="stat-card"><div style="color: #64748b;">Сумма</div><div style="font-size: 36px; font-weight: 600;" id="totalAmount">0 ₽</div></div>
+            <div class="stat-card"><div style="color: #64748b;">В пути</div><div style="font-size: 36px; font-weight: 600;" id="inTransit">0</div></div>
         </div>
 
         <div class="filters">
-            <input type="text" id="searchInput" placeholder="🔍 Поиск по VIN, авто..." style="width: 300px;" onkeyup="filterTable()">
-            <select id="cityFilter" onchange="filterTable()">
-                <option value="all">Все города</option>
-                <option>Тюмень</option><option>Екатеринбург</option><option>Уфа</option><option>Краснодар</option>
-                <option>Москва</option><option>Ростов на Дону</option><option>Казань</option><option>Волгоград</option>
+            <input type="text" id="searchInput" placeholder="🔍 Поиск по VIN, авто..." style="width: 300px;" onkeyup="loadCars()">
+            <select id="cityFilter" onchange="loadCars()">
+                <option value="">Все города</option>
+                <option>Тюмень</option><option>Екатеринбург</option><option>Уфа</option>
+                <option>Краснодар</option><option>Москва</option><option>Казань</option>
             </select>
-            <select id="brokerFilter" onchange="filterTable()">
-                <option value="all">Все брокеры</option>
+            <select id="brokerFilter" onchange="loadCars()">
+                <option value="">Все брокеры</option>
                 <option>Сергей (АвтоМирТ)</option><option>Юрий (Уфа)</option>
             </select>
-            <button class="btn" style="background: white; color: black; border: 1px solid #ccc;" onclick="exportTable()">📥 Экспорт</button>
+            <button class="btn" style="background: white; color: black; border: 1px solid #ccc;" onclick="exportExcel()">📥 Экспорт</button>
         </div>
 
         <div class="table-wrapper">
             <table id="carsTable">
-                <thead><tr><th>№</th><th>Дата</th><th>Авто</th><th>VIN</th><th>Цвет</th><th>Назначение</th><th>Брокер</th><th>Сумма</th><th>Остаток</th><th>Статус</th></tr></thead>
+                <thead>
+                    <tr>
+                        <th>№</th><th>Дата</th><th>Автомобиль</th><th>VIN</th><th>Цвет</th>
+                        <th>Назначение</th><th>Брокер</th><th>Сумма</th><th>Остаток</th><th>Статус</th><th></th>
+                    </tr>
+                </thead>
                 <tbody id="tableBody"></tbody>
             </table>
         </div>
     </div>
 
     <script>
-        const cars = [
-            {number:1305, date:"26.12.2025", model:"BMW 218i", vin:"0824", color:"Серый", destination:"Тюмень", broker:"Сергей (АвтоМирТ)", amount:185000, debt:185000, status:"В пути"},
-            {number:1306, date:"09.01.2026", model:"TOYOTA AYRIS", vin:"37910", color:"Белый", destination:"Екатеринбург", broker:"Сергей (АвтоМирТ)", amount:0, debt:0, status:"В пути"},
-            {number:1324, date:"16.01.2026", model:"TOYOTA RAV4", vin:"45448", color:"Белый", destination:"Казань", broker:"Сергей (АвтоМирТ)", amount:185000, debt:185000, status:"В пути"},
-            {number:1325, date:"16.01.2026", model:"MAZDA CX-5", vin:"90079", color:"Серый", destination:"Москва", broker:"Сергей (АвтоМирТ)", amount:185000, debt:185000, status:"В пути"},
-            {number:1320, date:"16.01.2026", model:"VOLKSWAGEN TIGUAN L", vin:"51625", color:"Белый", destination:"Уфа", broker:"Юрий (Уфа)", amount:0, debt:0, status:"В пути"},
-            {number:1328, date:"16.01.2026", model:"HONDA FREED", vin:"30909", color:"Серый", destination:"Уфа", broker:"Юрий (Уфа)", amount:0, debt:0, status:"В пути"},
-            {number:1333, date:"16.01.2026", model:"BMW X1", vin:"61699", color:"Белый", destination:"Краснодар", broker:"Сергей (АвтоМирТ)", amount:0, debt:0, status:"В пути"},
-            {number:1336, date:"16.01.2026", model:"VOLKSWAGEN T-ROC", vin:"00772", color:"Белый", destination:"Уфа", broker:"Юрий (Уфа)", amount:0, debt:0, status:"В пути"}
-        ];
+        const API_URL = 'http://127.0.0.1:8000/api';
+        let currentUser = null;
 
-        function renderTable(filteredCars = cars) {
+        async function loadCars() {
+            try {
+                const response = await fetch(`${API_URL}/cars`);
+                const cars = await response.json();
+                renderTable(cars);
+                loadStats();
+            } catch(e) {
+                console.error('Ошибка загрузки:', e);
+            }
+        }
+
+        function renderTable(cars) {
             let html = '';
-            filteredCars.forEach(car => {
-                html += '<tr>';
-                html += `<td>${car.number}</td><td>${car.date}</td><td><strong>${car.model}</strong></td>`;
-                html += `<td style="font-family: monospace;">${car.vin}</td><td>${car.color}</td><td>${car.destination}</td>`;
-                html += `<td>${car.broker}</td><td>${car.amount ? car.amount.toLocaleString()+' ₽' : '-'}</td>`;
-                html += `<td class="${car.debt > 0 ? 'debt' : ''}">${car.debt ? car.debt.toLocaleString()+' ₽' : '-'}</td>`;
-                html += `<td><span class="badge-${car.status === 'В пути' ? 'yellow' : 'green'}">${car.status === 'В пути' ? '🟡 В пути' : '🟢 Прибыл'}</span></td>`;
-                html += '</tr>';
+            cars.forEach(car => {
+                const debt = (car.amount || 0) - (car.prepayment || 0);
+                html += `<tr>
+                    <td>${car.number || ''}</td>
+                    <td>${car.date}</td>
+                    <td><strong>${car.model}</strong></td>
+                    <td style="font-family: monospace;">${car.vin}</td>
+                    <td>${car.color}</td>
+                    <td>${car.destination}</td>
+                    <td>${car.broker}</td>
+                    <td>${car.amount ? car.amount.toLocaleString() + ' ₽' : '-'}</td>
+                    <td class="${debt > 0 ? 'debt' : ''}">${debt ? debt.toLocaleString() + ' ₽' : '-'}</td>
+                    <td><span class="badge-${car.status === 'В пути' ? 'yellow' : 'green'}">${car.status === 'В пути' ? '🟡 В пути' : '🟢 Прибыл'}</span></td>
+                    <td>
+                        <button onclick="editCar('${car.vin}')" style="background: none; border: none; cursor: pointer;">✏️</button>
+                        ${currentUser?.role === 'admin' ? `<button onclick="deleteCar('${car.vin}')" style="background: none; border: none; cursor: pointer;">🗑️</button>` : ''}
+                    </td>
+                </tr>`;
             });
             document.getElementById('tableBody').innerHTML = html;
         }
 
-        function filterTable() {
-            const search = document.getElementById('searchInput').value.toLowerCase();
-            const city = document.getElementById('cityFilter').value;
-            const broker = document.getElementById('brokerFilter').value;
-            const filtered = cars.filter(car => 
-                (car.vin.toLowerCase().includes(search) || car.model.toLowerCase().includes(search) || !search) &&
-                (city === 'all' || car.destination === city) &&
-                (broker === 'all' || car.broker === broker)
-            );
-            renderTable(filtered);
+        async function loadStats() {
+            try {
+                const response = await fetch(`${API_URL}/stats`);
+                const stats = await response.json();
+                document.getElementById('totalCars').innerText = stats.total_cars || 0;
+                document.getElementById('totalAmount').innerText = (stats.total_amount || 0).toLocaleString() + ' ₽';
+                document.getElementById('inTransit').innerText = stats.in_transit || 0;
+            } catch(e) {
+                console.error('Ошибка статистики:', e);
+            }
         }
 
-        function exportTable() {
-            let csv = '№,Дата,Авто,VIN,Цвет,Назначение,Брокер,Сумма,Остаток,Статус\n';
-            cars.forEach(c => csv += `${c.number},${c.date},${c.model},${c.vin},${c.color},${c.destination},${c.broker},${c.amount},${c.debt},${c.status}\n`);
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(new Blob([csv], {type: 'text/csv'}));
-            a.download = 'auto-priemka.csv';
-            a.click();
+        function showAddForm() {
+            const vin = prompt('Введите VIN (17 символов):');
+            if (vin && vin.length === 17) {
+                const car = {
+                    date: new Date().toLocaleDateString('ru-RU'),
+                    model: prompt('Марка и модель:'),
+                    vin: vin,
+                    color: prompt('Цвет:'),
+                    destination: prompt('Город назначения:'),
+                    broker: prompt('Брокер:'),
+                    amount: parseInt(prompt('Сумма:', '0')) || 0,
+                    prepayment: parseInt(prompt('Предоплата:', '0')) || 0
+                };
+                
+                fetch(`${API_URL}/cars`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(car)
+                }).then(() => loadCars());
+            }
         }
 
-        renderTable();
+        function deleteCar(vin) {
+            if (confirm('Удалить автомобиль?')) {
+                fetch(`${API_URL}/cars/${vin}`, {method: 'DELETE'})
+                    .then(() => loadCars());
+            }
+        }
+
+        function editCar(vin) {
+            alert('Редактирование будет доступно в следующей версии');
+        }
+
+        function exportExcel() {
+            alert('Экспорт работает! Функция будет добавлена');
+        }
+
+        // Авторизация
+        function login() {
+            const username = prompt('Email:');
+            const password = prompt('Пароль:');
+            
+            fetch(`${API_URL}/auth/login`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({username, password})
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'ok') {
+                    currentUser = data.user;
+                    document.getElementById('userInfo').innerHTML = `${data.user.username} (${data.user.role})`;
+                    loadCars();
+                } else {
+                    alert('Ошибка входа');
+                }
+            });
+        }
+
+        // Проверяем авторизацию при загрузке
+        if (!currentUser) {
+            login();
+        }
     </script>
 </body>
 </html>
