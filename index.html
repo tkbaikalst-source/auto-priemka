@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Приёмка Авто</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f1f5f9; padding: 24px; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .header { background: white; padding: 24px 32px; border-radius: 20px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; }
+        .stats { display: flex; gap: 20px; margin-bottom: 24px; }
+        .stat-card { background: white; padding: 20px 24px; border-radius: 16px; flex: 1; }
+        .filters { background: white; padding: 20px 24px; border-radius: 16px; margin-bottom: 24px; display: flex; gap: 16px; flex-wrap: wrap; }
+        .table-wrapper { background: white; border-radius: 16px; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        th { background: #f8fafc; padding: 16px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+        td { padding: 14px 16px; border-bottom: 1px solid #e2e8f0; }
+        .badge-yellow { background: #fef9c3; color: #854d0e; padding: 4px 12px; border-radius: 20px; }
+        .badge-green { background: #dcfce7; color: #166534; padding: 4px 12px; border-radius: 20px; }
+        .debt { color: #dc2626; font-weight: 600; }
+        .btn { background: #2563eb; color: white; border: none; padding: 10px 20px; border-radius: 10px; cursor: pointer; }
+        input, select { padding: 10px 16px; border: 1px solid #e2e8f0; border-radius: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 style="font-size: 28px;">🚗 Приёмка Авто</h1>
+            <button class="btn" onclick="alert('Форма добавления')">➕ Добавить авто</button>
+        </div>
+
+        <div class="stats">
+            <div class="stat-card"><div style="color: #64748b;">Всего авто</div><div style="font-size: 36px; font-weight: 600;" id="totalCars">33</div></div>
+            <div class="stat-card"><div style="color: #64748b;">Сумма</div><div style="font-size: 36px; font-weight: 600;" id="totalAmount">555 000 ₽</div></div>
+            <div class="stat-card"><div style="color: #64748b;">В пути</div><div style="font-size: 36px; font-weight: 600;" id="inTransit">31</div></div>
+        </div>
+
+        <div class="filters">
+            <input type="text" id="searchInput" placeholder="🔍 Поиск по VIN, авто..." style="width: 300px;" onkeyup="filterTable()">
+            <select id="cityFilter" onchange="filterTable()">
+                <option value="all">Все города</option>
+                <option>Тюмень</option><option>Екатеринбург</option><option>Уфа</option><option>Краснодар</option>
+                <option>Москва</option><option>Ростов на Дону</option><option>Казань</option><option>Волгоград</option>
+            </select>
+            <select id="brokerFilter" onchange="filterTable()">
+                <option value="all">Все брокеры</option>
+                <option>Сергей (АвтоМирТ)</option><option>Юрий (Уфа)</option>
+            </select>
+            <button class="btn" style="background: white; color: black; border: 1px solid #ccc;" onclick="exportTable()">📥 Экспорт</button>
+        </div>
+
+        <div class="table-wrapper">
+            <table id="carsTable">
+                <thead><tr><th>№</th><th>Дата</th><th>Авто</th><th>VIN</th><th>Цвет</th><th>Назначение</th><th>Брокер</th><th>Сумма</th><th>Остаток</th><th>Статус</th></tr></thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const cars = [
+            {number:1305, date:"26.12.2025", model:"BMW 218i", vin:"0824", color:"Серый", destination:"Тюмень", broker:"Сергей (АвтоМирТ)", amount:185000, debt:185000, status:"В пути"},
+            {number:1306, date:"09.01.2026", model:"TOYOTA AYRIS", vin:"37910", color:"Белый", destination:"Екатеринбург", broker:"Сергей (АвтоМирТ)", amount:0, debt:0, status:"В пути"},
+            {number:1324, date:"16.01.2026", model:"TOYOTA RAV4", vin:"45448", color:"Белый", destination:"Казань", broker:"Сергей (АвтоМирТ)", amount:185000, debt:185000, status:"В пути"},
+            {number:1325, date:"16.01.2026", model:"MAZDA CX-5", vin:"90079", color:"Серый", destination:"Москва", broker:"Сергей (АвтоМирТ)", amount:185000, debt:185000, status:"В пути"},
+            {number:1320, date:"16.01.2026", model:"VOLKSWAGEN TIGUAN L", vin:"51625", color:"Белый", destination:"Уфа", broker:"Юрий (Уфа)", amount:0, debt:0, status:"В пути"},
+            {number:1328, date:"16.01.2026", model:"HONDA FREED", vin:"30909", color:"Серый", destination:"Уфа", broker:"Юрий (Уфа)", amount:0, debt:0, status:"В пути"},
+            {number:1333, date:"16.01.2026", model:"BMW X1", vin:"61699", color:"Белый", destination:"Краснодар", broker:"Сергей (АвтоМирТ)", amount:0, debt:0, status:"В пути"},
+            {number:1336, date:"16.01.2026", model:"VOLKSWAGEN T-ROC", vin:"00772", color:"Белый", destination:"Уфа", broker:"Юрий (Уфа)", amount:0, debt:0, status:"В пути"}
+        ];
+
+        function renderTable(filteredCars = cars) {
+            let html = '';
+            filteredCars.forEach(car => {
+                html += '<tr>';
+                html += `<td>${car.number}</td><td>${car.date}</td><td><strong>${car.model}</strong></td>`;
+                html += `<td style="font-family: monospace;">${car.vin}</td><td>${car.color}</td><td>${car.destination}</td>`;
+                html += `<td>${car.broker}</td><td>${car.amount ? car.amount.toLocaleString()+' ₽' : '-'}</td>`;
+                html += `<td class="${car.debt > 0 ? 'debt' : ''}">${car.debt ? car.debt.toLocaleString()+' ₽' : '-'}</td>`;
+                html += `<td><span class="badge-${car.status === 'В пути' ? 'yellow' : 'green'}">${car.status === 'В пути' ? '🟡 В пути' : '🟢 Прибыл'}</span></td>`;
+                html += '</tr>';
+            });
+            document.getElementById('tableBody').innerHTML = html;
+        }
+
+        function filterTable() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            const city = document.getElementById('cityFilter').value;
+            const broker = document.getElementById('brokerFilter').value;
+            const filtered = cars.filter(car => 
+                (car.vin.toLowerCase().includes(search) || car.model.toLowerCase().includes(search) || !search) &&
+                (city === 'all' || car.destination === city) &&
+                (broker === 'all' || car.broker === broker)
+            );
+            renderTable(filtered);
+        }
+
+        function exportTable() {
+            let csv = '№,Дата,Авто,VIN,Цвет,Назначение,Брокер,Сумма,Остаток,Статус\n';
+            cars.forEach(c => csv += `${c.number},${c.date},${c.model},${c.vin},${c.color},${c.destination},${c.broker},${c.amount},${c.debt},${c.status}\n`);
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(new Blob([csv], {type: 'text/csv'}));
+            a.download = 'auto-priemka.csv';
+            a.click();
+        }
+
+        renderTable();
+    </script>
+</body>
+</html>
